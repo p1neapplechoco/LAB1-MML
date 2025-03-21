@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pandas.api.types import is_numeric_dtype
-from DataPreprocessor import DataPreprocessor  # Importing your DataPreprocessor class
+from preprocessor.DataPreprocessor import DataPreprocessor  # Importing your DataPreprocessor class
 
 class Model:
     def __init__(self, file_path, target_column='Price', train_ratio=0.4, val_ratio=0.4, random_seed=42):
