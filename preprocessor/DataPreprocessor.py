@@ -1,8 +1,8 @@
-from DataFiller import DataFiller
-from DataEncoder import DataEncoder
-from DataScaler import DataScaler
+from .DataFiller import DataFiller
+from .DataScaler import DataScaler
+from .DataEncoder import DataEncoder
 
-class DataFiller(DataFiller, DataEncoder, DataScaler):
+class DataPreprocessor(DataFiller, DataEncoder, DataScaler):
     def __init__(self, df):
         DataFiller.__init__(self, df)
         DataEncoder.__init__(self, df)
