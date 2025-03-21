@@ -173,6 +173,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-Lab1_LR.pdf 
-train.csv
-train*.csv
+/.idea
+*.csv
