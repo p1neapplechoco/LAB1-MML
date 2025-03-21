@@ -65,7 +65,7 @@ class DataFiller:
                 distances = sorted(distances, key=lambda x: x[0])
                 nearest_neighbors = [self.df.iloc[j] for dist, j in distances[:k]]
 
-                for col in self.df.columns:
+                for col in columns:
                     if pd.isnull(self.df.at[i, col]):
                         neighbor_values = [neighbor[col] for neighbor in nearest_neighbors]
                         neighbor_values = [val for val in neighbor_values if not pd.isnull(val)]
@@ -83,8 +83,9 @@ class DataEncoder:
 
     def one_hot_encode(self, columns=None, threshold=0):
         for col in columns:
-            rare = self.df.value_counts()[lambda x: x < threshold].index
-            self.df[col] = self.df[col].apply(lambda x: x if x not in rare else 'Other')
+            if threshold:
+                rare = self.df.value_counts()[lambda x: x < threshold].index
+                self.df[col] = self.df[col].apply(lambda x: x if x not in rare else 'Other')
             self.df = pd.get_dummies(self.df, columns=[col], drop_first=True)
         return self.df
 
