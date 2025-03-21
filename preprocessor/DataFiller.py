@@ -2,16 +2,24 @@ import pandas as pd
 import numpy as np
 from pandas.api.types import is_numeric_dtype
 
-from collections import Counter
+from collections import Counter, defaultdict
+
 
 class DataFiller:
     def __init__(self, df):
         self.df = df
 
+        self.mean = defaultdict(float)
+        self.median = defaultdict(float)
+        self.std = defaultdict(float)
+        self.mode = defaultdict(int)
+        self.weights = defaultdict(float)
+
     def fill_mean(self, columns=None):
         if columns is None:
             columns = self.df.columns
         for col in columns:
+            self.mean[col] = self.df[col].mean()
             if is_numeric_dtype(self.df[col]):
                 self.df[col] = self.df[col].fillna(self.df[col].mean())
         return self.df
