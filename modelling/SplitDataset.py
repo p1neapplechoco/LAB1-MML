@@ -8,6 +8,7 @@ class SplitDataset:
         self.val_df = None
         self.test_df = None
     
+    @staticmethod
     def split_data(self, train_ratio=0.6, val_ratio=0.2, random_seed=42):
         """Split the dataset into train, validation, and test sets."""
         np.random.seed(random_seed)
@@ -35,4 +36,3 @@ class SplitDataset:
     
     def get_test_data(self):
         return self.test_df
-
