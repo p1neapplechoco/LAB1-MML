@@ -2,6 +2,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import math
+import scipy.stats as stats
 
 class Visualizer:
     @staticmethod
@@ -16,6 +17,7 @@ class Visualizer:
         sns.heatmap(filtered_corr, cmap="coolwarm", vmin=-1, vmax=1, annot=annot)
         plt.title(f"Feature Correlation Heatmap (|corr| >= {min_correlation})")
         plt.show()
+        plt.close()
 
     @staticmethod
     def target_feature_scatterplots(df: pd.DataFrame, target_col: str, cols_per_row=3, figsize=(5, 5)):
@@ -45,3 +47,39 @@ class Visualizer:
 
         plt.tight_layout()
         plt.show()
+        plt.close()
+
+    @staticmethod
+    def residual_plot(y_true, y_pred, figsize=(5, 5)):
+        residuals = y_true - y_pred
+        plt.figure(figsize=figsize)
+        sns.scatterplot(x=y_pred, y=residuals)
+        plt.axhline(y=0, color='r', linestyle='--')
+        plt.title("Residual Plot")
+        plt.xlabel("Predicted Values")
+        plt.ylabel("Residuals")
+        plt.show()
+        plt.close()
+
+    @staticmethod
+    def qq_plot(y_true, y_pred, figsize=(5, 5)):
+        residuals = y_true - y_pred
+        plt.figure(figsize=figsize)
+        stats.probplot(residuals, dist="norm", plot=plt)
+        plt.title("Q-Q Plot")
+        plt.xlabel("Theoretical Quantiles")
+        plt.ylabel("Sample Quantiles")
+        plt.show()
+        plt.close()
+    
+    @staticmethod
+    def scale_location_plot(y_true, y_pred, figsize=(5, 5)):
+        residuals = y_true - y_pred
+        sqrt_abs_residuals = residuals.abs().apply(math.sqrt)
+        plt.figure(figsize=figsize)
+        sns.scatterplot(x=y_pred, y=sqrt_abs_residuals)
+        plt.title("Scale-Location Plot")
+        plt.xlabel("Predicted Values")
+        plt.ylabel("sqrt(|Residuals|)")
+        plt.show()
+        plt.close()
