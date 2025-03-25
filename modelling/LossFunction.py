@@ -1,3 +1,5 @@
+import numpy as np
+
 class LossFunction:
     @staticmethod
     def mse(y_true, y_pred):
