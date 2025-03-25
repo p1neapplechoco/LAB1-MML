@@ -1,5 +1,5 @@
-from Model import Model
-from DataPreprocessor import DataPreprocessor
+from modelling.Model import Model
+from preprocessor.DataPreprocessor import DataPreprocessor
 
 def main():
     # Initialize the model
