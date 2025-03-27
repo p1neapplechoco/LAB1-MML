@@ -1,178 +1,211 @@
-import pandas as pd
+from abc import ABC, abstractmethod
 import numpy as np
-import matplotlib.pyplot as plt
-from pandas.api.types import is_numeric_dtype
-from preprocessor.DataPreprocessor import DataPreprocessor  # Importing your DataPreprocessor class
+from typing import Tuple, Optional, Union, List
+from modelling.LossFunction import LossFunction, MSE
 
-class Model:
-    def __init__(self, file_path, target_column='Price', train_ratio=0.4, val_ratio=0.4, random_seed=42):
-        """Initialize the Model class."""
-        self.file_path = file_path
-        self.target_column = target_column
-        self.train_ratio = train_ratio
-        self.val_ratio = val_ratio
-        self.random_seed = random_seed
-        self.weights = None
-        self.bias = None
-        self.train_losses = []
-        self.val_losses = []
-        self.preprocessor_params = {}  # To store preprocessing parameters
+class MultipleRegression(ABC):
+    def __init__(self, 
+                 fit_intercept: bool = True,
+                 regularization: Optional[str] = None,
+                 alpha: float = 0.0) -> None:
+        """
+        Initialize regression model.
+        
+        Args:
+            fit_intercept: Whether to fit intercept term
+            regularization: Type of regularization ('l1', 'l2', or None)
+            alpha: Regularization strength
+        """
+        self.fit_intercept = fit_intercept
+        self.regularization = regularization
+        self.alpha = alpha
+        self.coefficients = None
+        self.intercept = 0.0
+    
+    @abstractmethod
+    def transform_features(self, X: np.ndarray) -> np.ndarray:
+        """Transform input features (polynomials, interactions, etc.)"""
+        pass
+    
+    def add_intercept(self, X: np.ndarray) -> np.ndarray:
+        """Add intercept column to X if required"""
+        if self.fit_intercept:
+            return np.c_[np.ones(X.shape[0]), X]
+        return X
+    
+    def fit_closed_form(self, X: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """Solve using normal equations with pseudoinverse"""
+        X_transformed = self.transform_features(X)
+        X_with_intercept = self.add_intercept(X_transformed)
+        
+        # For ridge regression (L2)
+        if self.regularization == 'l2':
+            # (X^T X + αI)^(-1) X^T y
+            n_features = X_with_intercept.shape[1]
+            identity = np.eye(n_features)
+            if self.fit_intercept:
+                # Don't regularize intercept
+                identity[0, 0] = 0
+            theta = np.linalg.inv(X_with_intercept.T @ X_with_intercept + 
+                               self.alpha * identity) @ X_with_intercept.T @ y
+        else:
+            # Standard OLS: (X^T X)^(-1) X^T y
+            theta = np.linalg.pinv(X_with_intercept) @ y
+            
+        return theta
+    
+    def fit_gradient_descent(self, X: np.ndarray, y: np.ndarray, 
+                            loss_func: LossFunction,
+                            learning_rate: float = 0.01,
+                            max_iter: int = 1000,
+                            tol: float = 1e-6) -> np.ndarray:
+        """Fit using gradient descent"""
+        X_transformed = self.transform_features(X)
+        X_with_intercept = self.add_intercept(X_transformed)
+        
+        # Initialize parameters
+        theta = np.zeros(X_with_intercept.shape[1])
+        
+        for i in range(max_iter):
+            gradient = loss_func.gradient(X_with_intercept, y, theta)
+            
+            # Add regularization gradient if needed
+            if self.regularization == 'l2':
+                # Don't regularize intercept
+                reg_gradient = np.zeros_like(theta)
+                reg_gradient[1:] = self.alpha * theta[1:]
+                gradient += reg_gradient
+            elif self.regularization == 'l1':
+                reg_gradient = np.zeros_like(theta)
+                reg_gradient[1:] = self.alpha * np.sign(theta[1:])
+                gradient += reg_gradient
+            
+            # Update parameters
+            theta_new = theta - learning_rate * gradient
+            
+            # Check convergence
+            if np.all(np.abs(theta - theta_new) < tol):
+                break
+                
+            theta = theta_new
+            
+        return theta
+    
+    def fit(self, X: np.ndarray, y: np.ndarray, 
+            method: str = 'closed_form',
+            loss_func: Optional[LossFunction] = None,
+            **kwargs) -> 'MultipleRegression':
+        """
+        Fit the regression model.
+        
+        Args:
+            X: Feature matrix
+            y: Target values
+            method: 'closed_form' or 'gradient_descent'
+            loss_func: Loss function (required for gradient descent)
+            **kwargs: Additional parameters for gradient descent
+        
+        Returns:
+            self: Fitted model
+        """
+        if method == 'closed_form':
+            if self.regularization == 'l1':
+                raise ValueError("L1 regularization not supported with closed-form solution")
+            theta = self.fit_closed_form(X, y)
+        elif method == 'gradient_descent':
+            if loss_func is None:
+                loss_func = MSE()
+            theta = self.fit_gradient_descent(X, y, loss_func, **kwargs)
+        else:
+            raise ValueError(f"Unknown method: {method}")
+        
+        # Extract intercept and coefficients
+        if self.fit_intercept:
+            self.intercept = theta[0]
+            self.coefficients = theta[1:]
+        else:
+            self.coefficients = theta
+            
+        return self
+    
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Make predictions on new data"""
+        if self.coefficients is None:
+            raise RuntimeError("Model not fitted yet")
+            
+        X_transformed = self.transform_features(X)
+        return self.intercept + X_transformed @ self.coefficients
+    
+    def score(self, X: np.ndarray, y: np.ndarray) -> float:
+        """Return R² score"""
+        y_pred = self.predict(X)
+        ss_total = np.sum((y - np.mean(y)) ** 2)
+        ss_residual = np.sum((y - y_pred) ** 2)
+        return 1 - (ss_residual / ss_total)
+    
+    def score_log(self, X: np.ndarray, y: np.ndarray) -> float:
+        """Return R² score with y in log space"""
+        y_pred = np.exp(self.predict(X))
+        ss_total = np.sum((y - np.mean(y)) ** 2)
+        ss_residual = np.sum((y - y_pred) ** 2)
+        return 1 - (ss_residual / ss_total)
+    
+class StandardRegression(MultipleRegression):
+    def transform_features(self, X: np.ndarray) -> np.ndarray:
+        # Standard regression uses features as-is
+        return X.copy()
 
-    def load_data(self):
-        """Load the dataset from the CSV file."""
-        self.data = pd.read_csv(self.file_path)
-        print("Data loaded successfully. Shape:", self.data.shape)
+class PolynomialRegression(MultipleRegression):
+    def __init__(self, degree: int = 2, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.degree = degree
+        
+    def transform_features(self, X: np.ndarray) -> np.ndarray:
+        # Create polynomial features up to specified degree
+        n_samples, n_features = X.shape
+        X_poly = np.empty((n_samples, n_features * self.degree))
+        
+        for d in range(1, self.degree + 1):
+            X_poly[:, (d-1)*n_features:d*n_features] = X ** d
+            
+        return X_poly
 
-    def split_data(self, df):
-        """Split the DataFrame into train, validation, and test sets."""
-        np.random.seed(self.random_seed)
-        n_samples = len(df)
-        indices = np.random.permutation(n_samples)
+class InteractionRegression(MultipleRegression):
+    def transform_features(self, X: np.ndarray) -> np.ndarray:
+        # Add all pairwise interaction terms
+        n_samples, n_features = X.shape
+        
+        # First, include original features
+        result = [X]
+        
+        # Then add interaction terms
+        for i in range(n_features):
+            for j in range(i+1, n_features):
+                result.append((X[:, i] * X[:, j]).reshape(-1, 1))
+                
+        return np.hstack(result)
 
-        train_size = int(n_samples * self.train_ratio)
-        val_size = int(n_samples * self.val_ratio)
-
-        train_indices = indices[:train_size]
-        val_indices = indices[train_size:train_size + val_size]
-        test_indices = indices[train_size + val_size:]
-
-        train_df = df.iloc[train_indices].reset_index(drop=True)
-        val_df = df.iloc[val_indices].reset_index(drop=True)
-        test_df = df.iloc[test_indices].reset_index(drop=True)
-
-        return train_df, val_df, test_df
-
-    def preprocess_data(self):
-        """Preprocess the data using DataPreprocessor."""
-        # Parse non-numeric columns that should be numeric
-        data = self.data.copy()
-        if 'Engine' in data.columns:
-            data['Engine'] = data['Engine'].str.extract(r'(\d+\.?\d*)').astype(float)
-        if 'Max Power' in data.columns:
-            data['Max Power'] = data['Max Power'].str.extract(r'(\d+\.?\d*)').astype(float)
-        if 'Max Torque' in data.columns:
-            data['Max Torque'] = data['Max Torque'].str.extract(r'(\d+\.?\d*)').astype(float)
-
-        # Drop non-numerical columns
-        non_numerical_cols = ['Make', 'Model', 'Fuel Type', 'Transmission', 'Location', 'Color', 'Owner', 'Seller Type', 'Drivetrain']
-        data = data.drop(columns=[col for col in non_numerical_cols if col in data.columns])
-        print("Non-numerical columns dropped. Remaining columns:", data.columns.tolist())
-
-        # Split the data
-        train_df, val_df, test_df = self.split_data(data)
-
-        # Initialize preprocessors
-        train_preprocessor = DataPreprocessor(train_df)
-        val_preprocessor = DataPreprocessor(val_df)
-        test_preprocessor = DataPreprocessor(test_df)
-
-        # Step 1: Fill missing values
-        # Numeric columns: Fill with mean
-        numeric_cols = [col for col in train_df.columns if is_numeric_dtype(train_df[col])]
-        train_df = train_preprocessor.fill_mean(columns=numeric_cols)
-        # Store means for numeric columns
-        self.preprocessor_params['means'] = {col: train_df[col].mean() for col in numeric_cols}
-        # Apply to val and test using train means
-        for col in numeric_cols:
-            val_df[col] = val_df[col].fillna(self.preprocessor_params['means'][col])
-            test_df[col] = test_df[col].fillna(self.preprocessor_params['means'][col])
-
-        # Step 2: Standardize numeric columns (skip the target column)
-        numeric_cols = [col for col in train_df.columns if is_numeric_dtype(train_df[col]) and col != self.target_column]
-        train_df = train_preprocessor.standard_norm(columns=numeric_cols)
-        # Store means and stds for numeric columns
-        self.preprocessor_params['means'] = {col: train_df[col].mean() for col in numeric_cols}
-        self.preprocessor_params['stds'] = {col: train_df[col].std() for col in numeric_cols}
-        # Apply to val and test using train means and stds
-        for col in numeric_cols:
-            std = self.preprocessor_params['stds'][col]
-            if std == 0 or pd.isna(std):
-                std = 1  # Prevent division by zero
-            val_df[col] = (val_df[col] - self.preprocessor_params['means'][col]) / std
-            test_df[col] = (test_df[col] - self.preprocessor_params['means'][col]) / std
-
-        # Extract features and target
-        self.X_train = train_df.drop(columns=[self.target_column]).values
-        self.y_train = train_df[self.target_column].values
-        self.X_val = val_df.drop(columns=[self.target_column]).values
-        self.y_val = val_df[self.target_column].values
-        self.X_test = test_df.drop(columns=[self.target_column]).values
-        self.y_test = test_df[self.target_column].values
-
-        # Fill missing values in the target
-        train_mean = np.nanmean(self.y_train)  # Use nanmean to handle NaN values
-        self.y_train = np.where(np.isnan(self.y_train), train_mean, self.y_train)
-        self.y_val = np.where(np.isnan(self.y_val), train_mean, self.y_val)
-        self.y_test = np.where(np.isnan(self.y_test), train_mean, self.y_test)
-
-        # Ensure all data is numeric and free of NaN/inf
-        self.X_train = np.array(self.X_train, dtype=np.float64)
-        self.X_val = np.array(self.X_val, dtype=np.float64)
-        self.X_test = np.array(self.X_test, dtype=np.float64)
-        self.y_train = np.array(self.y_train, dtype=np.float64)
-        self.y_val = np.array(self.y_val, dtype=np.float64)
-        self.y_test = np.array(self.y_test, dtype=np.float64)
-
-        # Check for NaN or inf
-        for name, arr in [('X_train', self.X_train), ('X_val', self.X_val), ('X_test', self.X_test),
-                          ('y_train', self.y_train), ('y_val', self.y_val), ('y_test', self.y_test)]:
-            if np.any(np.isnan(arr)) or np.any(np.isinf(arr)):
-                raise ValueError(f"{name} contains NaN or inf values.")
-
-        print("Data preprocessed successfully.")
-        print("Train shape:", self.X_train.shape)
-        print("Validation shape:", self.X_val.shape)
-        print("Test shape:", self.X_test.shape)
-
-    def train(self, learning_rate=0.001, epochs=2000):
-        """Train the linear regression model using gradient descent."""
-        n_samples, n_features = self.X_train.shape
-        self.weights = np.zeros(n_features)
-        self.bias = 0
-
-        for epoch in range(epochs):
-            # Forward pass
-            y_pred_train = self.predict(self.X_train)
-            y_pred_val = self.predict(self.X_val)
-
-            # Compute train and validation loss (MSE)
-            train_loss = np.mean((y_pred_train - self.y_train) ** 2)
-            val_loss = np.mean((y_pred_val - self.y_val) ** 2)
-            self.train_losses.append(train_loss)
-            self.val_losses.append(val_loss)
-
-            # Compute gradients
-            dw = (1/n_samples) * (self.X_train.T @ (y_pred_train - self.y_train))
-            db = (1/n_samples) * np.sum(y_pred_train - self.y_train)
-
-            # Update weights
-            self.weights -= learning_rate * dw
-            self.bias -= learning_rate * db
-
-        print("Training completed.")
-
-    def predict(self, X):
-        """Make predictions."""
-        return X @ self.weights + self.bias
-
-    def evaluate(self):
-        """Evaluate the model on the test set using MSE and MAE."""
-        y_pred = self.predict(self.X_test)
-        mse = np.mean((y_pred - self.y_test) ** 2)
-        mae = np.mean(np.abs(y_pred - self.y_test))
-        print("Test MSE:", mse)
-        print("Test MAE:", mae)
-        return mse, mae
-
-    def plot_loss_curve(self):
-        """Plot the train-validation loss curve."""
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.train_losses, label='Train Loss (MSE)', color='blue')
-        plt.plot(self.val_losses, label='Validation Loss (MSE)', color='orange')
-        plt.xlabel('Epoch')
-        plt.ylabel('Mean Squared Error (MSE)')
-        plt.title('Train-Validation Loss Learning Curve')
-        plt.legend()
-        plt.grid(True)
-        plt.show()
-
+class MixedRegression(MultipleRegression):
+    def __init__(self, 
+                 degree: int = 2,
+                 include_interactions: bool = True,
+                 **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.degree = degree
+        self.include_interactions = include_interactions
+        
+    def transform_features(self, X: np.ndarray) -> np.ndarray:
+        n_samples, n_features = X.shape
+        result = [X]  # Original features
+        
+        # Add polynomial terms
+        for d in range(2, self.degree + 1):
+            result.append(X ** d)
+            
+        # Add interaction terms if requested
+        if self.include_interactions:
+            for i in range(n_features):
+                for j in range(i+1, n_features):
+                    result.append((X[:, i] * X[:, j]).reshape(-1, 1))
+                    
+        return np.hstack(result)
