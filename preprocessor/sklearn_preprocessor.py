@@ -100,7 +100,7 @@ def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.7, 
     )
     
     # Get column names for the transformed data
-    def get_feature_names(column_transformer):
+    def get_feature_names():
         # Get output feature names for all transformers
         output_features = []
         
@@ -141,7 +141,7 @@ def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.7, 
     test_transformed = preprocessor.transform(test_df)
     
     # Get feature names
-    feature_names = get_feature_names(preprocessor)
+    feature_names = get_feature_names()
     
     # Convert to DataFrames
     train_df_transformed = pd.DataFrame(train_transformed, columns=feature_names)
@@ -155,7 +155,7 @@ def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.7, 
         train_df_transformed.to_csv(os.path.join(save_path, 'train.csv'), index=False)
         test_df_transformed.to_csv(os.path.join(save_path, 'test.csv'), index=False)
     
-    return train_df_transformed, test_df_transformed, preprocessor
+    return train_df_transformed, test_df_transformed, preprocessor, feature_names
 
 # Usage Example
 if __name__ == "__main__":
