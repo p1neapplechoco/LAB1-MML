@@ -23,7 +23,7 @@ class CustomLogTransformer:
     def inverse_transform(self, X):
         return np.power(self.base, X) - 1
 
-def preprocess_data(data_path=None, data=None, save_path=None):
+def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
     """
     Preprocesses the data using scikit-learn pipelines to avoid data leakage.
     
@@ -43,6 +43,9 @@ def preprocess_data(data_path=None, data=None, save_path=None):
     preprocessor : ColumnTransformer
         Fitted preprocessor for future transformations.
     """
+    if (train_ratio + val_ratio + test_ratio != 1):
+        raise ValueError("Ratio must sum up to 1")
+
     # Load data if path is provided
     if data is None and data_path is not None:
         data = pd.read_csv(data_path)
@@ -51,15 +54,15 @@ def preprocess_data(data_path=None, data=None, save_path=None):
     data = data.dropna()
     
     # Split data
-    train_df, temp_df = train_test_split(data, test_size=0.4, random_state=42)
-    val_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=42)
+    train_df, temp_df = train_test_split(data, train_size=train_ratio, random_state=42)
+    val_df, test_df = train_test_split(temp_df, train_size=(val_ratio) / (val_ratio + test_ratio), random_state=42)
     
     # Define column types
-    log_columns = ['Price', 'Max Torque RPM']
+    log_columns = ['Price']
     minmax_columns = ['Year', 'Kilometer']
-    standard_columns = ['Max Power RPM']
     ordinal_columns = ['Owner']
-    onehot_columns = ['Drivetrain', 'Fuel Type']
+    onehot_columns = ['Drivetrain', 'Fuel Type', 'Seller Type', 'Transmission']
+    standard_columns = ['Max Power RPM', 'Max Torque RPM']
     
     # Create owner categories for ordinal encoding
     owner_categories = [["UnRegistered Car", "First", "Second", "Third", "Fourth", "4 or More"]]
