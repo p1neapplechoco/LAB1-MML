@@ -23,7 +23,7 @@ class CustomLogTransformer:
     def inverse_transform(self, X):
         return np.power(self.base, X) - 1
 
-def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
+def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.7, test_ratio=0.3):
     """
     Preprocesses the data using scikit-learn pipelines to avoid data leakage.
     
@@ -43,7 +43,7 @@ def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.6, 
     preprocessor : ColumnTransformer
         Fitted preprocessor for future transformations.
     """
-    if (train_ratio + val_ratio + test_ratio != 1):
+    if (train_ratio + test_ratio != 1):
         raise ValueError("Ratio must sum up to 1")
 
     # Load data if path is provided
@@ -54,15 +54,14 @@ def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.6, 
     data = data.dropna()
     
     # Split data
-    train_df, temp_df = train_test_split(data, train_size=train_ratio, random_state=42)
-    val_df, test_df = train_test_split(temp_df, train_size=(val_ratio) / (val_ratio + test_ratio), random_state=42)
+    train_df, test_df = train_test_split(data, train_size=train_ratio, random_state=42)
     
     # Define column types
     log_columns = ['Price']
     minmax_columns = ['Year', 'Kilometer']
     ordinal_columns = ['Owner']
     onehot_columns = ['Drivetrain', 'Fuel Type', 'Seller Type', 'Transmission']
-    standard_columns = ['Max Power RPM', 'Max Torque RPM']
+    standard_columns = ['Max Power RPM', 'Max Torque RPM', 'Engine', 'Length', 'Height', 'Width', 'Fuel Tank Capacity', 'Max Power BHP', 'Max Torque Nm']
     
     # Create owner categories for ordinal encoding
     owner_categories = [["UnRegistered Car", "First", "Second", "Third", "Fourth", "4 or More"]]
@@ -101,7 +100,7 @@ def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.6, 
     )
     
     # Get column names for the transformed data
-    def get_feature_names(column_transformer):
+    def get_feature_names():
         # Get output feature names for all transformers
         output_features = []
         
@@ -138,17 +137,14 @@ def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.6, 
     # Fit on training data
     train_transformed = preprocessor.fit_transform(train_df)
     
-    
     # Transform validation and test data
-    val_transformed = preprocessor.transform(val_df)
     test_transformed = preprocessor.transform(test_df)
     
     # Get feature names
-    feature_names = get_feature_names(preprocessor)
+    feature_names = get_feature_names()
     
     # Convert to DataFrames
     train_df_transformed = pd.DataFrame(train_transformed, columns=feature_names)
-    val_df_transformed = pd.DataFrame(val_transformed, columns=feature_names)
     test_df_transformed = pd.DataFrame(test_transformed, columns=feature_names)
     
     # Save transformed data if path is provided
@@ -157,10 +153,9 @@ def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.6, 
             os.makedirs(save_path)
             
         train_df_transformed.to_csv(os.path.join(save_path, 'train.csv'), index=False)
-        val_df_transformed.to_csv(os.path.join(save_path, 'val.csv'), index=False)
         test_df_transformed.to_csv(os.path.join(save_path, 'test.csv'), index=False)
     
-    return train_df_transformed, val_df_transformed, test_df_transformed, preprocessor
+    return train_df_transformed, test_df_transformed, preprocessor, feature_names
 
 # Usage Example
 if __name__ == "__main__":
