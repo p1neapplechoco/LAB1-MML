@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
+import pandas as pd
 from typing import Tuple, Optional, Union, List
 from modelling.LossFunction import LossFunction, MSE
 
@@ -23,8 +24,8 @@ class MultipleRegression(ABC):
         self.intercept = 0.0
     
     @abstractmethod
-    def transform_features(self, X: np.ndarray) -> np.ndarray:
-        """Transform input features (polynomials, interactions, etc.)"""
+    def transform_features(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Transform input features (polynomials, interactions, etc.) and return as pandas DataFrame"""
         pass
     
     def add_intercept(self, X: np.ndarray) -> np.ndarray:
@@ -151,7 +152,7 @@ class MultipleRegression(ABC):
         return 1 - (ss_residual / ss_total)
     
 class StandardRegression(MultipleRegression):
-    def transform_features(self, X: np.ndarray) -> np.ndarray:
+    def transform_features(self, X: pd.DataFrame) -> pd.DataFrame:
         # Standard regression uses features as-is
         return X.copy()
 
@@ -160,30 +161,38 @@ class PolynomialRegression(MultipleRegression):
         super().__init__(**kwargs)
         self.degree = degree
         
-    def transform_features(self, X: np.ndarray) -> np.ndarray:
-        # Create polynomial features up to specified degree
-        n_samples, n_features = X.shape
-        X_poly = np.empty((n_samples, n_features * self.degree))
+    def transform_features(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Transform features into polynomial features up to the specified degree"""
+        result = pd.DataFrame()
         
-        for d in range(1, self.degree + 1):
-            X_poly[:, (d-1)*n_features:d*n_features] = X ** d
-            
-        return X_poly
+        # Create polynomial features for each column
+        for col in X.columns:
+            for d in range(1, self.degree + 1):
+                new_col_name = f"{col}^{d}" if d > 1 else col
+                result[new_col_name] = X[col] ** d
+                
+        return result
 
 class InteractionRegression(MultipleRegression):
-    def transform_features(self, X: np.ndarray) -> np.ndarray:
-        # Add all pairwise interaction terms
-        n_samples, n_features = X.shape
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
         
-        # First, include original features
-        result = [X]
+    def transform_features(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Transform features by adding all pairwise interaction terms"""
+        # Start with a copy of the original DataFrame
+        result = X.copy()
         
-        # Then add interaction terms
-        for i in range(n_features):
-            for j in range(i+1, n_features):
-                result.append((X[:, i] * X[:, j]).reshape(-1, 1))
-                
-        return np.hstack(result)
+        # Add interaction terms
+        for i, col1 in enumerate(X.columns):
+            for j, col2 in enumerate(X.columns):
+                # Only add interaction once (avoid duplicates)
+                if j > i:
+                    # Create a new column name for the interaction
+                    interaction_name = f"{col1}*{col2}"
+                    # Add the interaction column
+                    result[interaction_name] = X[col1] * X[col2]
+                    
+        return result
 
 class MixedRegression(MultipleRegression):
     def __init__(self, 
@@ -194,18 +203,26 @@ class MixedRegression(MultipleRegression):
         self.degree = degree
         self.include_interactions = include_interactions
         
-    def transform_features(self, X: np.ndarray) -> np.ndarray:
-        n_samples, n_features = X.shape
-        result = [X]  # Original features
+    def transform_features(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Transform features into polynomial features and interaction terms"""
+        # Start with a copy of the original DataFrame
+        result = X.copy()
         
         # Add polynomial terms
-        for d in range(2, self.degree + 1):
-            result.append(X ** d)
-            
+        for col in X.columns:
+            for d in range(2, self.degree + 1):
+                new_col_name = f"{col}^{d}"
+                result[new_col_name] = X[col] ** d
+                
         # Add interaction terms if requested
         if self.include_interactions:
-            for i in range(n_features):
-                for j in range(i+1, n_features):
-                    result.append((X[:, i] * X[:, j]).reshape(-1, 1))
-                    
-        return np.hstack(result)
+            for i, col1 in enumerate(X.columns):
+                for j, col2 in enumerate(X.columns):
+                    # Only add interaction once (avoid duplicates)
+                    if j > i:
+                        # Create a new column name for the interaction
+                        interaction_name = f"{col1}*{col2}"
+                        # Add the interaction column
+                        result[interaction_name] = X[col1] * X[col2]
+                        
+        return result
