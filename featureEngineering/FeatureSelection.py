@@ -11,7 +11,7 @@ class FeatureSelection:
         return chain.from_iterable(combinations(s, r) for r in range(min_feat, max_feat + 1))
 
     @staticmethod
-    def subset_selection(train, val, target, model_type, 
+    def subset_selection(train, val, target, model, 
                          oneHotCols=None, min_feat=1, max_feat=None, max_diff=0.08):
         feature_columns = [col for col in train.select_dtypes(include='number').columns if col != target]
         
@@ -58,7 +58,7 @@ class FeatureSelection:
             if n_train - p - 1 <= 0 or n_val - p - 1 <= 0:
                 continue
 
-            model = model_type()
+            model = model()
             model.fit(X_train, y_train)
 
             y_pred_val = model.predict(X_val)
@@ -77,7 +77,7 @@ class FeatureSelection:
         return best_subset, best_adj_r2
     
     @staticmethod
-    def forward_selection_r2(df, target, model_type, oneHotCols=None):
+    def forward_selection_r2(df, target, model, oneHotCols=None):
         all_num_cols = df.select_dtypes(include='number').columns.tolist()
         features = [col for col in all_num_cols if col != target]
         
@@ -125,7 +125,6 @@ class FeatureSelection:
 
                 X = df[current_features]
                 y = df[target]
-                model = model_type()
                 model.fit(X, y)
                 y_pred = model.predict(X)
                 r2_val = r2_score(y, y_pred)
@@ -148,7 +147,7 @@ class FeatureSelection:
         return best_subset, best_adj_r2
 
     @staticmethod
-    def forward_selection_mse(df, target, model_type, oneHotCols=None):
+    def forward_selection_mse(df, target, model, oneHotCols=None):
         import numpy as np
         from sklearn.metrics import mean_squared_error
 
@@ -200,7 +199,6 @@ class FeatureSelection:
 
                 X = df[current_features]
                 y = df[target]
-                model = model_type()
                 model.fit(X, y)
                 y_pred = model.predict(X)
                 mse_val = mean_squared_error(y, y_pred)
@@ -223,7 +221,7 @@ class FeatureSelection:
         return best_subset, best_mse
 
     @staticmethod
-    def forward_selection_mae(df, target, model_type, oneHotCols=None):
+    def forward_selection_mae(df, target, model, oneHotCols=None):
         from sklearn.metrics import mean_absolute_error
 
         all_num_cols = df.select_dtypes(include='number').columns.tolist()
@@ -268,7 +266,6 @@ class FeatureSelection:
 
                 X = df[current_features]
                 y = df[target]
-                model = model_type()
                 model.fit(X, y)
                 y_pred = model.predict(X)
                 mae_val = mean_absolute_error(y, y_pred)

@@ -57,7 +57,7 @@ class MultipleRegression(ABC):
     
     def fit_gradient_descent(self, X: np.ndarray, y: np.ndarray, 
                             loss_func: LossFunction,
-                            learning_rate: float = 0.01,
+                            learning_rate: float = 0.0001,
                             max_iter: int = 1000,
                             tol: float = 1e-6) -> np.ndarray:
         """Fit using gradient descent"""
@@ -65,7 +65,7 @@ class MultipleRegression(ABC):
         X_with_intercept = self.add_intercept(X_transformed)
         
         # Initialize parameters
-        theta = np.zeros(X_with_intercept.shape[1])
+        theta = np.random.rand(X_with_intercept.shape[1])
         
         for i in range(max_iter):
             gradient = loss_func.gradient(X_with_intercept, y, theta)
