@@ -161,6 +161,7 @@ class Visualizer:
         plt.tight_layout()
         plt.show()
     
+    @staticmethod
     def count_plot(df, categorical_features = None, figsize=(20, 10)):
         if categorical_features is None:
             categorical_features = df.select_dtypes(include='object').columns
@@ -185,3 +186,30 @@ class Visualizer:
             
         plt.tight_layout()
         plt.show()
+
+    @staticmethod
+    def pred_vs_true_plot(y_pred, y_true, y_pred_train=None, y_true_train=None, figsize=(10, 5)):
+        if y_pred_train is not None and y_true_train is not None:
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
+            ax1.scatter(y_true_train, y_pred_train, alpha=0.6)
+            m, M = min(np.min(y_true_train), np.min(y_pred_train)), max(np.max(y_true_train), np.max(y_pred_train))
+            ax1.plot([m, M], [m, M], 'r--')
+            ax1.set_title('Training Data')
+            
+            ax2.scatter(y_true, y_pred, alpha=0.6)
+            m, M = min(np.min(y_true), np.min(y_pred)), max(np.max(y_true), np.max(y_pred))
+            ax2.plot([m, M], [m, M], 'r--')
+            ax2.set_title('Test Data')
+            
+            plt.tight_layout()
+            plt.show()
+        else:
+            plt.figure(figsize=figsize)
+            plt.scatter(y_true, y_pred, alpha=0.6)
+            m, M = min(np.min(y_true), np.min(y_pred)), max(np.max(y_true), np.max(y_pred))
+            plt.plot([m, M], [m, M], 'r--')
+            plt.title('Test Data')
+            plt.tight_layout()
+            plt.show()
+        plt.close()
+        

@@ -58,7 +58,6 @@ class FeatureSelection:
             if n_train - p - 1 <= 0 or n_val - p - 1 <= 0:
                 continue
 
-            model = model()
             model.fit(X_train, y_train)
 
             y_pred_val = model.predict(X_val)
