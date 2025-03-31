@@ -67,81 +67,6 @@ class Visualizer:
         plt.show()
         plt.close()
 
-
-    @staticmethod
-    def residual_plot(train_pair, val_pair=None, test_pair=None, figsize=(15, 5)):
-        pairs = [("Train", train_pair)]
-        if val_pair is not None:
-            pairs.append(("Validation", val_pair))
-        if test_pair is not None:
-            pairs.append(("Test", test_pair))
-            
-        n_plots = len(pairs)
-        fig, axes = plt.subplots(1, n_plots, figsize=(figsize[0], figsize[1]))
-        if n_plots == 1:
-            axes = [axes]
-        
-        for ax, (label, (y_true, y_pred)) in zip(axes, pairs):
-            residuals = np.array(y_true) - np.array(y_pred)
-            sns.scatterplot(x=y_pred, y=residuals, ax=ax)
-            ax.axhline(y=0, color='red', linestyle='--')
-            ax.set_title(f"Residual Plot - {label}")
-            ax.set_xlabel("Predicted Values")
-            ax.set_ylabel("Residuals")
-        
-        plt.tight_layout()
-        plt.show()
-        plt.close()
-
-    @staticmethod
-    def qq_plot(train_pair, val_pair=None, test_pair=None, figsize=(15, 5)):
-        pairs = [("Train", train_pair)]
-        if val_pair is not None:
-            pairs.append(("Validation", val_pair))
-        if test_pair is not None:
-            pairs.append(("Test", test_pair))
-        
-        n_plots = len(pairs)
-        fig, axes = plt.subplots(1, n_plots, figsize=figsize)
-        if n_plots == 1:
-            axes = [axes]
-        
-        for ax, (label, (y_true, y_pred)) in zip(axes, pairs):
-            residuals = np.array(y_true) - np.array(y_pred)
-            stats.probplot(residuals, dist="norm", plot=ax)
-            ax.set_title(f"Q-Q Plot - {label}")
-            ax.set_xlabel("Theoretical Quantiles")
-            ax.set_ylabel("Sample Quantiles")
-            
-        plt.tight_layout()
-        plt.show()
-        plt.close()
-    
-    @staticmethod
-    def scale_location_plot(train_pair, val_pair=None, test_pair=None, figsize=(15, 5)):
-        pairs = [("Train", train_pair)]
-        if val_pair is not None:
-            pairs.append(("Validation", val_pair))
-        if test_pair is not None:
-            pairs.append(("Test", test_pair))
-        
-        n_plots = len(pairs)
-        fig, axes = plt.subplots(1, n_plots, figsize=figsize)
-        if n_plots == 1:
-            axes = [axes]
-            
-        for ax, (label, (y_true, y_pred)) in zip(axes, pairs):
-            residuals = np.array(y_true) - np.array(y_pred)
-            sqrt_abs_residuals = np.sqrt(np.abs(residuals))
-            sns.scatterplot(x=y_pred, y=sqrt_abs_residuals, ax=ax)
-            ax.set_title(f"Scale-Location Plot - {label}")
-            ax.set_xlabel("Predicted Values")
-            ax.set_ylabel("sqrt(|Residuals|)")
-        
-        plt.tight_layout()
-        plt.show()
-        plt.close()
-
     @staticmethod
     def histogram_plot(df, col, figsize=(5, 5)):
         plt.figure(figsize=figsize)
@@ -188,35 +113,64 @@ class Visualizer:
         plt.show()
 
     @staticmethod
-    def pred_vs_true_plot(y_pred, y_true, y_pred_test=None, y_true_test=None, figsize=(10, 5)):
-        if y_pred_test is not None and y_true_test is not None:
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
-            
-            ax1.scatter(y_true, y_pred, alpha=0.6)
-            m, M = min(np.min(y_true), np.min(y_pred)), max(np.max(y_true), np.max(y_pred))
-            ax1.plot([m, M], [m, M], 'r--')
-            ax1.set_title('Train Data')
-            ax1.set_xlabel('True Values')
-            ax1.set_ylabel('Predicted Values')
-            
-            ax2.scatter(y_true_test, y_pred_test, alpha=0.6)
-            m, M = min(np.min(y_true_test), np.min(y_pred_test)), max(np.max(y_true_test), np.max(y_pred_test))
-            ax2.plot([m, M], [m, M], 'r--')
-            ax2.set_title('Test Data')
-            ax2.set_xlabel('True Values')
-            ax2.set_ylabel('Predicted Values')
-            
-            plt.tight_layout()
-            plt.show()
-        else:
-            plt.figure(figsize=figsize)
-            plt.scatter(y_true, y_pred, alpha=0.6)
-            m, M = min(np.min(y_true), np.min(y_pred)), max(np.max(y_true), np.max(y_pred))
-            plt.plot([m, M], [m, M], 'r--')
-            plt.title('Train Data')
-            plt.xlabel('True Values')
-            plt.ylabel('Predicted Values')
-            plt.tight_layout()
-            plt.show()
-        plt.close()
+    def result_plots(y_true, y_pred, y_true_test, y_pred_test, figsize=(15, 20)):
+        fig, axs = plt.subplots(4, 2, figsize=figsize)
         
+        # Row 1: Predicted vs True Plot
+        # Train
+        axs[0, 0].scatter(y_true, y_pred, alpha=0.6)
+        m, M = min(np.min(y_true), np.min(y_pred)), max(np.max(y_true), np.max(y_pred))
+        axs[0, 0].plot([m, M], [m, M], 'r--')
+        axs[0, 0].set_title('Pred vs True - Train')
+        axs[0, 0].set_xlabel('True Values')
+        axs[0, 0].set_ylabel('Predicted Values')
+        # Test
+        axs[0, 1].scatter(y_true_test, y_pred_test, alpha=0.6)
+        m, M = min(np.min(y_true_test), np.min(y_pred_test)), max(np.max(y_true_test), np.max(y_pred_test))
+        axs[0, 1].plot([m, M], [m, M], 'r--')
+        axs[0, 1].set_title('Pred vs True - Test')
+        axs[0, 1].set_xlabel('True Values')
+        axs[0, 1].set_ylabel('Predicted Values')
+        
+        # Tính residuals cho train và test
+        resid_train = np.array(y_true) - np.array(y_pred)
+        resid_test  = np.array(y_true_test) - np.array(y_pred_test)
+        
+        # Row 2: Residual Plot
+        axs[1, 0].scatter(y_pred, resid_train, alpha=0.6)
+        axs[1, 0].axhline(0, color='red', linestyle='--')
+        axs[1, 0].set_title('Residual Plot - Train')
+        axs[1, 0].set_xlabel('Predicted Values')
+        axs[1, 0].set_ylabel('Residuals')
+        
+        axs[1, 1].scatter(y_pred_test, resid_test, alpha=0.6)
+        axs[1, 1].axhline(0, color='red', linestyle='--')
+        axs[1, 1].set_title('Residual Plot - Test')
+        axs[1, 1].set_xlabel('Predicted Values')
+        axs[1, 1].set_ylabel('Residuals')
+        
+        # Row 3: Scale-Location Plot
+        axs[2, 0].scatter(y_pred, np.sqrt(np.abs(resid_train)), alpha=0.6)
+        axs[2, 0].set_title('Scale-Location Plot - Train')
+        axs[2, 0].set_xlabel('Predicted Values')
+        axs[2, 0].set_ylabel('sqrt(|Residuals|)')
+        
+        axs[2, 1].scatter(y_pred_test, np.sqrt(np.abs(resid_test)), alpha=0.6)
+        axs[2, 1].set_title('Scale-Location Plot - Test')
+        axs[2, 1].set_xlabel('Predicted Values')
+        axs[2, 1].set_ylabel('sqrt(|Residuals|)')
+        
+        # Row 4: Q-Q Plot
+        stats.probplot(resid_train, dist="norm", plot=axs[3, 0])
+        axs[3, 0].set_title('Q-Q Plot - Train')
+        axs[3, 0].set_xlabel('Theoretical Quantiles')
+        axs[3, 0].set_ylabel('Sample Quantiles')
+        
+        stats.probplot(resid_test, dist="norm", plot=axs[3, 1])
+        axs[3, 1].set_title('Q-Q Plot - Test')
+        axs[3, 1].set_xlabel('Theoretical Quantiles')
+        axs[3, 1].set_ylabel('Sample Quantiles')
+        
+        plt.tight_layout()
+        plt.show()
+            
