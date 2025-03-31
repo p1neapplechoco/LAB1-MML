@@ -57,7 +57,7 @@ def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.7, 
     train_df, test_df = train_test_split(data, train_size=train_ratio, random_state=42)
     
     # Define column types
-    log_columns = ['Price']
+    log_columns = []
     minmax_columns = ['Year', 'Kilometer']
     ordinal_columns = ['Owner']
     onehot_columns = ['Drivetrain', 'Fuel Type', 'Seller Type', 'Transmission']

@@ -192,19 +192,19 @@ class Visualizer:
         if y_pred_test is not None and y_true_test is not None:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
             
-            ax2.scatter(y_true, y_pred, alpha=0.6)
+            ax1.scatter(y_true, y_pred, alpha=0.6)
             m, M = min(np.min(y_true), np.min(y_pred)), max(np.max(y_true), np.max(y_pred))
-            ax2.plot([m, M], [m, M], 'r--')
-            ax2.set_title('Train Data')
-            ax2.set_xlabel('True Values')
-            ax2.set_ylabel('Predicted Values')
-            
-            ax1.scatter(y_true_test, y_pred_test, alpha=0.6)
-            m, M = min(np.min(y_true_test), np.min(y_pred_test)), max(np.max(y_true_test), np.max(y_pred_test))
             ax1.plot([m, M], [m, M], 'r--')
-            ax1.set_title('Test Data')
+            ax1.set_title('Train Data')
             ax1.set_xlabel('True Values')
             ax1.set_ylabel('Predicted Values')
+            
+            ax2.scatter(y_true_test, y_pred_test, alpha=0.6)
+            m, M = min(np.min(y_true_test), np.min(y_pred_test)), max(np.max(y_true_test), np.max(y_pred_test))
+            ax2.plot([m, M], [m, M], 'r--')
+            ax2.set_title('Test Data')
+            ax2.set_xlabel('True Values')
+            ax2.set_ylabel('Predicted Values')
             
             plt.tight_layout()
             plt.show()

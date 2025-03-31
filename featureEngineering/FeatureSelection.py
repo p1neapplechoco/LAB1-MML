@@ -76,7 +76,7 @@ class FeatureSelection:
         return best_subset, best_adj_r2
     
     @staticmethod
-    def forward_selection_r2(df, target, model, oneHotCols=None):
+    def forward_selection_adjr2(df, target, model, oneHotCols=None, log_transform=True):
         all_num_cols = df.select_dtypes(include='number').columns.tolist()
         features = [col for col in all_num_cols if col != target]
         
@@ -124,8 +124,11 @@ class FeatureSelection:
 
                 X = df[current_features]
                 y = df[target]
-                model.fit(X, y)
-                y_pred = model.predict(X)
+                model.fit(X, y, log_transform=log_transform)
+                y_pred = model.predict(X, y_exp = not log_transform)
+                if log_transform:
+                    y_pred = np.exp(y_pred)
+
                 r2_val = r2_score(y, y_pred)
                 adj_r2 = 1 - ((1 - r2_val) * (n - 1) / (n - p - 1))
                 
@@ -146,81 +149,7 @@ class FeatureSelection:
         return best_subset, best_adj_r2
 
     @staticmethod
-    def forward_selection_mse(df, target, model, oneHotCols=None):
-        import numpy as np
-        from sklearn.metrics import mean_squared_error
-
-        # Lấy tất cả các cột số và loại bỏ cột target
-        all_num_cols = df.select_dtypes(include='number').columns.tolist()
-        features = [col for col in all_num_cols if col != target]
-        
-        # Nếu có chỉ định oneHotCols, nhóm các cột one hot lại với nhau
-        one_hot_groups = {}
-        if oneHotCols is not None:
-            for base in oneHotCols:
-                # Tìm tất cả các cột có định dạng base_<value>
-                group_cols = [col for col in features if col.startswith(base + "_")]
-                if group_cols:
-                    one_hot_groups[base] = group_cols
-
-        # Các cột không thuộc nhóm one hot (tức không nằm trong bất cứ nhóm nào)
-        group_cols_all = set()
-        for group in one_hot_groups.values():
-            group_cols_all.update(group)
-        remaining_individual = [col for col in features if col not in group_cols_all]
-        
-        # Các nhóm one hot
-        remaining_groups = list(one_hot_groups.keys())
-        
-        best_subset = []
-        best_mse = float('inf')  # Với MSE, càng nhỏ càng tốt
-
-        remaining_candidates = [('individual', feat) for feat in remaining_individual] + \
-                            [('group', group) for group in remaining_groups]
-        n = len(df)
-        
-        improvement = True
-        while remaining_candidates and improvement:
-            improvement = False
-            best_candidate = None
-            candidate_mse = best_mse
-
-            for cand_type, candidate in remaining_candidates:
-                # Nếu là cột đơn, thêm trực tiếp; nếu là nhóm, thêm tất cả các cột trong nhóm đó
-                if cand_type == 'individual':
-                    current_features = best_subset + [candidate]
-                elif cand_type == 'group':
-                    current_features = best_subset + one_hot_groups[candidate]
-                
-                p = len(current_features)
-                if n - p - 1 <= 0:
-                    continue
-
-                X = df[current_features]
-                y = df[target]
-                model.fit(X, y)
-                y_pred = model.predict(X)
-                mse_val = mean_squared_error(y, y_pred)
-                
-                if mse_val < candidate_mse:
-                    candidate_mse = mse_val
-                    best_candidate = (cand_type, candidate)
-            
-            if best_candidate is not None and candidate_mse < best_mse:
-                cand_type, candidate = best_candidate
-                if cand_type == 'individual':
-                    best_subset.append(candidate)
-                else:
-                    best_subset.extend(one_hot_groups[candidate])
-                # Loại bỏ ứng viên đã được thêm ra khỏi danh sách candidates
-                remaining_candidates = [item for item in remaining_candidates if not (item[0] == cand_type and item[1] == candidate)]
-                best_mse = candidate_mse
-                improvement = True
-            
-        return best_subset, best_mse
-
-    @staticmethod
-    def forward_selection_mae(df, target, model, oneHotCols=None):
+    def forward_selection_mae(df, target, model, oneHotCols=None, log_transform=True):
         from sklearn.metrics import mean_absolute_error
 
         all_num_cols = df.select_dtypes(include='number').columns.tolist()
@@ -265,8 +194,10 @@ class FeatureSelection:
 
                 X = df[current_features]
                 y = df[target]
-                model.fit(X, y)
-                y_pred = model.predict(X)
+                model.fit(X, y, log_transform=log_transform)
+                y_pred = model.predict(X, y_exp = not log_transform)
+                if log_transform:
+                    y_pred = np.exp(y_pred)
                 mae_val = mean_absolute_error(y, y_pred)
                 
                 if mae_val < candidate_mae:

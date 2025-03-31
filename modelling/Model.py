@@ -93,6 +93,7 @@ class MultipleRegression(ABC):
         return theta
     
     def fit(self, X: np.ndarray, y: np.ndarray, 
+            log_transform: bool = True,
             method: str = 'closed_form',
             loss_func: Optional[LossFunction] = None,
             **kwargs) -> 'MultipleRegression':
@@ -109,14 +110,19 @@ class MultipleRegression(ABC):
         Returns:
             self: Fitted model
         """
+        if log_transform:
+            y_copy = np.log(y)
+        else:
+            y_copy = y.copy()
+            
         if method == 'closed_form':
             if self.regularization == 'l1':
                 raise ValueError("L1 regularization not supported with closed-form solution")
-            theta = self.fit_closed_form(X, y)
+            theta = self.fit_closed_form(X, y_copy)
         elif method == 'gradient_descent':
             if loss_func is None:
                 loss_func = MSE()
-            theta = self.fit_gradient_descent(X, y, loss_func, **kwargs)
+            theta = self.fit_gradient_descent(X, y_copy, loss_func, **kwargs)
         else:
             raise ValueError(f"Unknown method: {method}")
         
@@ -129,13 +135,17 @@ class MultipleRegression(ABC):
             
         return self
     
-    def predict(self, X: np.ndarray) -> np.ndarray:
+    def predict(self, X: np.ndarray, y_exp = True) -> np.ndarray:
         """Make predictions on new data"""
         if self.coefficients is None:
             raise RuntimeError("Model not fitted yet")
             
         X_transformed = self.transform_features(X)
-        return self.intercept + X_transformed @ self.coefficients
+        if y_exp:
+            y_pred = np.exp(self.intercept + X_transformed @ self.coefficients)
+        else:
+            y_pred = self.intercept + X_transformed @ self.coefficients
+        return y_pred
     
     def score(self, X: np.ndarray, y: np.ndarray) -> float:
         """Return R² score"""
