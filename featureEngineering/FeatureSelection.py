@@ -1,5 +1,5 @@
 from itertools import chain, combinations
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 import numpy as np
 
 class FeatureSelection: 
@@ -150,7 +150,6 @@ class FeatureSelection:
 
     @staticmethod
     def forward_selection_mae(df, target, model, oneHotCols=None, log_transform=True):
-        from sklearn.metrics import mean_absolute_error
 
         all_num_cols = df.select_dtypes(include='number').columns.tolist()
         features = [col for col in all_num_cols if col != target]
@@ -217,4 +216,70 @@ class FeatureSelection:
             
         return best_subset, best_mae
 
+    @staticmethod
+    def forward_selection_rmse(df, target, model, oneHotCols=None, log_transform=True):
 
+        all_num_cols = df.select_dtypes(include='number').columns.tolist()
+        features = [col for col in all_num_cols if col != target]
+        
+        one_hot_groups = {}
+        if oneHotCols is not None:
+            for base in oneHotCols:
+                group_cols = [col for col in features if col.startswith(base + "_")]
+                if group_cols:
+                    one_hot_groups[base] = group_cols
+
+        group_cols_all = set()
+        for group in one_hot_groups.values():
+            group_cols_all.update(group)
+        remaining_individual = [col for col in features if col not in group_cols_all]
+        
+        remaining_groups = list(one_hot_groups.keys())
+        
+        best_subset = []
+        best_mae = float('inf') 
+
+        remaining_candidates = [('individual', feat) for feat in remaining_individual] + \
+                            [('group', group) for group in remaining_groups]
+        n = len(df)
+        
+        improvement = True
+        while remaining_candidates and improvement:
+            improvement = False
+            best_candidate = None
+            candidate_mae = best_mae
+
+            for cand_type, candidate in remaining_candidates:
+                if cand_type == 'individual':
+                    current_features = best_subset + [candidate]
+                elif cand_type == 'group':
+                    current_features = best_subset + one_hot_groups[candidate]
+                
+                p = len(current_features)
+                if n - p - 1 <= 0:
+                    continue
+
+                X = df[current_features]
+                y = df[target]
+                model.fit(X, y, log_transform=log_transform)
+                y_pred = model.predict(X, y_exp = not log_transform)
+                if log_transform:
+                    y_pred = np.exp(y_pred)
+                mae_val = np.sqrt(mean_squared_error(y, y_pred))
+                
+                if mae_val < candidate_mae:
+                    candidate_mae = mae_val
+                    best_candidate = (cand_type, candidate)
+            
+            if best_candidate is not None and candidate_mae < best_mae:
+                cand_type, candidate = best_candidate
+                if cand_type == 'individual':
+                    best_subset.append(candidate)
+                else:
+                    best_subset.extend(one_hot_groups[candidate])
+
+                remaining_candidates = [item for item in remaining_candidates if not (item[0] == cand_type and item[1] == candidate)]
+                best_mae = candidate_mae
+                improvement = True
+            
+        return best_subset, best_mae
