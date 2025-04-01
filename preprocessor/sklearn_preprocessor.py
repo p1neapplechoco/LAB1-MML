@@ -58,10 +58,10 @@ def preprocess_data(data_path=None, data=None, save_path=None, train_ratio=0.7, 
     
     # Define column types
     log_columns = []
-    minmax_columns = ['Year', 'Kilometer']
+    minmax_columns = []
     ordinal_columns = ['Owner']
     onehot_columns = ['Drivetrain', 'Fuel Type', 'Seller Type', 'Transmission']
-    standard_columns = ['Max Power RPM', 'Max Torque RPM', 'Engine', 'Length', 'Height', 'Width', 'Fuel Tank Capacity', 'Max Power BHP', 'Max Torque Nm']
+    standard_columns = ['Year', 'Kilometer', 'Max Power RPM', 'Max Torque RPM', 'Engine', 'Length', 'Height', 'Width', 'Fuel Tank Capacity', 'Max Power BHP', 'Max Torque Nm']
     
     # Create owner categories for ordinal encoding
     owner_categories = [["UnRegistered Car", "First", "Second", "Third", "Fourth", "4 or More"]]
